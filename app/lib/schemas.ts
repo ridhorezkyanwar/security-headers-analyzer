@@ -7,9 +7,18 @@ export const UrlInputSchema = z.object({
     .min(1, "URL tidak boleh kosong")
     .refine((value) => {
       try {
-        const candidate = /^https?:\/\//i.test(value)
-          ? value
-          : `https://${value}`;
+        const hasHttpScheme = /^https?:\/\//i.test(value);
+        const looksLikeHostAndPort = /^[^:/?#]+:\d+(?:[/?#]|$)/.test(value);
+        const hasUnsupportedScheme =
+          /^[a-z][a-z\d+.-]*:/i.test(value) &&
+          !hasHttpScheme &&
+          !looksLikeHostAndPort;
+
+        if (hasUnsupportedScheme) {
+          return false;
+        }
+
+        const candidate = hasHttpScheme ? value : `https://${value}`;
         const parsed = new URL(candidate);
 
         return (
