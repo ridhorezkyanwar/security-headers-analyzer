@@ -3,6 +3,8 @@ import { guardedFetch, isGuardedFetchError } from "guarded-fetch";
 import { UrlInputSchema } from "@/app/lib/schemas";
 import type { HeaderCheck, AnalysisResult } from "@/app/lib/types";
 
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
