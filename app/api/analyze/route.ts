@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { guardedFetch, isGuardedFetchError } from "guarded-fetch";
 import { UrlInputSchema } from "@/app/lib/schemas";
 import type { HeaderCheck, AnalysisResult } from "@/app/lib/types";
-
-// Daftar User-Agent browser asli
-const USER_AGENTS = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
-];
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,25 +16,31 @@ export async function POST(req: NextRequest) {
     }
 
     const { url } = validation.data;
-    const targetUrl = new URL(url.startsWith("http") ? url : `https://${url}`);
+    const trimmedUrl = url.trim();
+    const targetUrl = new URL(
+      /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`,
+    );
 
-    // Pilih User-Agent acak
-    const randomUserAgent = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-
-    const response = await fetch(targetUrl, {
+    // guardedFetch validates DNS destinations at connect time and revalidates every redirect.
+    // This scanner needs only response headers, so cancel the response body immediately.
+    const response = await guardedFetch(targetUrl, {
       method: "GET",
-      redirect: "follow",
+      timeoutMs: 8_000,
+      maxRedirects: 3,
+      opaqueErrors: true,
       headers: {
-        "User-Agent": randomUserAgent,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "User-Agent": "SecurityHeadersAnalyzer/1.0 (+https://github.com/ridhorezkyanwar/security-headers-analyzer)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
       },
     });
 
     const headers = response.headers;
+    try {
+      await response.body?.cancel();
+    } catch {
+      // The scan depends on response headers only; body cancellation is best-effort.
+    }
     const checks: HeaderCheck[] = [];
 
     // CHECK 1: HSTS
@@ -194,8 +190,31 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error("Analysis error:", error);
+
+    if (isGuardedFetchError(error)) {
+      const rejectedTargetCodes = new Set([
+        "invalid_url",
+        "protocol_not_allowed",
+        "hostname_unsafe",
+        "host_not_allowed",
+        "redirect_invalid",
+        "redirect_to_unsafe_host",
+        "too_many_redirects",
+      ]);
+      const status = rejectedTargetCodes.has(error.code)
+        ? 400
+        : error.code === "timeout"
+          ? 504
+          : 502;
+
+      return NextResponse.json(
+        { error: "Target ditolak atau tidak dapat dianalisis. Gunakan URL publik yang dapat diakses." },
+        { status }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Gagal menganalisis website. Website mungkin memblokir request." },
+      { error: "Gagal menganalisis website karena kesalahan internal." },
       { status: 500 }
     );
   }
