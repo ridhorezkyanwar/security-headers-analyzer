@@ -23,10 +23,23 @@ test("rejects unsupported schemes and credentials embedded in a URL", () => {
 
 test("rejects loopback, link-local metadata, and local hostnames before fetching", async (t) => {
   const targets = [
+    // Loopback and local hostnames
     "http://127.0.0.1/",
     "http://[::1]/",
-    "http://169.254.169.254/",
     "http://localhost/",
+    "http://0.0.0.0/",
+
+    // Private and link-local destinations
+    "http://10.0.0.1/",
+    "http://192.168.1.1/",
+    "http://169.254.169.254/",
+    "http://[fe80::1]/",
+
+    // Alternate IPv4 spellings that URL parsers may normalize to loopback
+    "http://2130706433/",
+    "http://0177.0.0.1/",
+    "http://0x7f000001/",
+    "http://[::ffff:127.0.0.1]/",
   ];
 
   for (const target of targets) {
