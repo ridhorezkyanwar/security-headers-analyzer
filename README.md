@@ -1,43 +1,44 @@
 # Security Headers Analyzer
 
-<p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=18&duration=2600&pause=850&color=58A6FF&center=true&vCenter=true&width=520&lines=Build+%E2%80%A2+Test+%E2%80%A2+Improve" alt="Animated banner: Build, Test, Improve" />
+> Inspect a site's HTTPS setup and selected HTTP response security headers.
+
+<p>
+  <a href="https://security-headers-analyzer.vercel.app/"><img src="https://img.shields.io/badge/Live_Demo-Vercel-black?style=for-the-badge&logo=vercel" alt="Live demo" /></a>
+  <img src="https://img.shields.io/badge/Next.js-16-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js 16" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D22.12-339933?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js 22.12 or newer" />
 </p>
-<p align="center">
-  <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js badge" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript badge" />
-  <img src="https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS badge" />
-  <img src="https://img.shields.io/badge/Zod-3E67B1?style=flat-square" alt="Zod badge" />
-</p>
 
+A Next.js web app that checks a target website's HTTPS configuration and selected response headers, then presents a heuristic score, a letter grade, individual checks, and suggested remediations.
 
-A Next.js web application that inspects selected HTTP security headers for a target website and presents a score, a letter grade, detailed checks, and suggested remediations.
+## What it checks
 
-**Demo:** [security-headers-analyzer.vercel.app](https://security-headers-analyzer.vercel.app/)
+- HTTPS availability
+- `Strict-Transport-Security` (HSTS)
+- `Content-Security-Policy` (CSP)
+- `X-Frame-Options`
+- `X-Content-Type-Options`
+- `Referrer-Policy`
+- `Permissions-Policy`
 
-## Features
+It also identifies some common CDN or anti-bot signals that can affect which headers are visible. Recent scan results can be stored in browser local storage, and the current result can be downloaded as JSON.
 
-- Checks HTTPS and six response headers: Strict-Transport-Security (HSTS), Content-Security-Policy (CSP), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, and Permissions-Policy.
-- Shows an overall score and grade, plus the value, severity, and recommendation for each check.
-- Identifies some common CDN or anti-bot signals that may affect which headers are visible.
-- Keeps up to five recent scan results in browser local storage.
-- Downloads the current result as a JSON report.
+## Stack
 
-## Technology
-
-- Next.js App Router and React
+- Next.js App Router and React 19
 - TypeScript
-- Tailwind CSS
-- Zod for input validation
+- Tailwind CSS 4
+- Zod input validation
+- Guarded server-side URL fetching
 - Framer Motion, Heroicons, and Lucide React
 
 ## Run locally
 
 ### Requirements
 
-Install Node.js and npm.
+Node.js 22.12 or newer and npm.
 
-### Setup
+### Install
 
 ```bash
 git clone https://github.com/ridhorezkyanwar/security-headers-analyzer.git
@@ -48,17 +49,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Useful commands
+## Verification commands
 
 ```bash
+npm test
 npm run lint
 npm run build
 ```
 
-These commands run the repository's configured lint and production-build scripts. Their presence in this README does not imply they have passed in every environment.
+- `npm test` runs the repository's Node.js test files.
+- `npm run lint` runs ESLint.
+- `npm run build` creates the production build.
 
-## How the score should be interpreted
+These commands describe the available scripts; run them locally or in CI to confirm their current result.
 
-The grade is a heuristic summary of the checks implemented in this project. Header presence alone does not establish that a website is secure, and this tool is not a substitute for a complete security review. Results can also be incomplete when a target blocks automated requests or hides response headers.
+## How to interpret results
 
-Only analyze websites you own or are authorized to assess. The application makes a server-side request to the URL entered by the user; URL-format validation alone is not proof that a destination is safe to fetch.
+The grade is a heuristic summary of the checks implemented in this project. A missing header does not automatically mean a site is exploitable, and present headers do not prove a website is secure. This tool does not replace a full application-security review or penetration test.
+
+Results may be incomplete when a site varies headers by path, region, user agent, reverse proxy, or anti-bot policy. Only scan sites you own or are authorized to assess. Although the app validates and guards URL fetching, it should not be treated as a general-purpose unrestricted URL-fetching service.
