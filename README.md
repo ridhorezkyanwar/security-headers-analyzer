@@ -1,5 +1,16 @@
 # Security Headers Analyzer
 
+<p align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=18&duration=2600&pause=850&color=58A6FF&center=true&vCenter=true&width=520&lines=Build+%E2%80%A2+Test+%E2%80%A2+Improve" alt="Animated banner: Build, Test, Improve" />
+</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js badge" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript badge" />
+  <img src="https://img.shields.io/badge/Tailwind%20CSS-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white" alt="Tailwind CSS badge" />
+  <img src="https://img.shields.io/badge/Zod-3E67B1?style=flat-square" alt="Zod badge" />
+</p>
+
+
 A Next.js web application that inspects selected HTTP security headers for a target website and presents a score, a letter grade, detailed checks, and suggested remediations.
 
 **Demo:** [security-headers-analyzer.vercel.app](https://security-headers-analyzer.vercel.app/)
