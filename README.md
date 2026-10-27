@@ -68,3 +68,13 @@ These commands describe the available scripts; run them locally or in CI to conf
 The grade is a heuristic summary of the checks implemented in this project. A missing header does not automatically mean a site is exploitable, and present headers do not prove a website is secure. This tool does not replace a full application-security review or penetration test.
 
 Results may be incomplete when a site varies headers by path, region, user agent, reverse proxy, or anti-bot policy. Only scan sites you own or are authorized to assess. Although the app validates and guards URL fetching, it should not be treated as a general-purpose unrestricted URL-fetching service.
+
+## Scoring and request handling notes
+
+- The API limits the request body to 4 KiB while reading the stream, including requests without a trustworthy `Content-Length` header. URL input is limited to 2,048 characters.
+- HSTS is marked positive only when a valid `max-age` of at least one year is detected.
+- `X-Frame-Options` is marked positive only for `DENY` or `SAMEORIGIN`; `X-Content-Type-Options` must be `nosniff`.
+- CSP and Permissions-Policy are treated conservatively: the current tool does not parse their directives/feature allowlists deeply enough to claim the policy itself is safe. Mere presence is therefore not a positive security grade.
+- CDN/anti-bot detection is shown as contextual information and is not added as a header-security warning or included as an extra scoring check.
+- This is still a heuristic scanner, not a standards-complete security-header auditor.
+
