@@ -5,6 +5,7 @@ export const UrlInputSchema = z.object({
     .string()
     .trim()
     .min(1, "URL tidak boleh kosong")
+    .max(2048, "URL maksimal 2.048 karakter")
     .refine((value) => {
       try {
         const hasHttpScheme = /^https?:\/\//i.test(value);
