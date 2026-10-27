@@ -72,6 +72,7 @@ Results may be incomplete when a site varies headers by path, region, user agent
 ## Scoring and request handling notes
 
 - The API limits the request body to 4 KiB while reading the stream, including requests without a trustworthy `Content-Length` header. URL input is limited to 2,048 characters.
+- The API returns `429` after five scan requests per client address per minute per runtime instance and sends `Cache-Control: no-store`. This in-memory limiter is best-effort only; use a shared store or edge/provider rate-limit rule for production-scale enforcement.
 - HSTS is marked positive only when a valid `max-age` of at least one year is detected.
 - `X-Frame-Options` is marked positive only for `DENY` or `SAMEORIGIN`; `X-Content-Type-Options` must be `nosniff`.
 - CSP and Permissions-Policy are treated conservatively: the current tool does not parse their directives/feature allowlists deeply enough to claim the policy itself is safe. Mere presence is therefore not a positive security grade.
