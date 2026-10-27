@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardedFetch, isGuardedFetchError } from "guarded-fetch";
 import { MAX_REQUEST_BYTES, UrlInputSchema } from "@/app/lib/schemas";
 import { readBoundedBody } from "@/app/lib/bounded-body";
+import { FixedWindowRateLimiter, getClientAddress } from "@/app/lib/rate-limit";
 import {
   hasSafeReferrerPolicy,
   hasStrongHsts,
@@ -11,6 +12,9 @@ import {
 import type { HeaderCheck, AnalysisResult } from "@/app/lib/types";
 
 export const runtime = "nodejs";
+
+// Best-effort per-runtime limit for the public URL scanning demo.
+const scanRateLimiter = new FixedWindowRateLimiter(5, 60_000);
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,6 +27,22 @@ export async function POST(req: NextRequest) {
           { status: 413 }
         );
       }
+    }
+
+    const rateLimit = scanRateLimiter.consume(getClientAddress(req.headers));
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Terlalu banyak permintaan pemindaian. Coba lagi setelah jeda singkat." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.retryAfterSeconds),
+            "Cache-Control": "no-store",
+            "X-RateLimit-Limit": String(rateLimit.limit),
+            "X-RateLimit-Remaining": "0",
+          },
+        }
+      );
     }
 
     const boundedBody = await readBoundedBody(req, MAX_REQUEST_BYTES);
@@ -230,10 +250,20 @@ export async function POST(req: NextRequest) {
       analyzedAt: new Date().toISOString(),
     };
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": "no-store",
+        "X-RateLimit-Limit": String(rateLimit.limit),
+        "X-RateLimit-Remaining": String(rateLimit.remaining),
+      },
+    });
 
   } catch (error) {
-    console.error("Analysis error:", error);
+    // Avoid writing target URLs or request-derived details to application logs.
+    console.error(
+      "Header analysis failed:",
+      error instanceof Error ? error.name : "UnknownError"
+    );
 
     if (isGuardedFetchError(error)) {
       const rejectedTargetCodes = new Set([
