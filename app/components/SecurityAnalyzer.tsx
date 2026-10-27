@@ -202,6 +202,19 @@
                     </button>
                 </div>
 
+                {data.botProtection && (
+                    <div
+                        role="status"
+                        className="mb-4 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-100"
+                    >
+                        <p className="font-semibold">CDN/anti-bot terdeteksi: {data.botProtection}</p>
+                        <p className="mt-1 text-blue-100/80">
+                            Ini konteks tambahan, bukan temuan keamanan dan tidak menurunkan skor.
+                            Sebagian header dapat berbeda atau tidak terlihat pada respons yang diterima.
+                        </p>
+                    </div>
+                )}
+
                 <GradeCard
                     grade={data.grade}
                     score={data.score}
