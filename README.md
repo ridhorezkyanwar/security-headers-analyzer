@@ -61,6 +61,8 @@ npm run build
 - `npm run lint` runs ESLint.
 - `npm run build` creates the production build.
 
+GitHub Actions also runs lint, TypeScript checking, tests, and a production build for pushes and pull requests on `main`.
+
 These commands describe the available scripts; run them locally or in CI to confirm their current result.
 
 ## How to interpret results
