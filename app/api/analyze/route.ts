@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardedFetch, isGuardedFetchError } from "guarded-fetch";
 import { MAX_REQUEST_BYTES, UrlInputSchema } from "@/app/lib/schemas";
 import { readBoundedBody } from "@/app/lib/bounded-body";
+import {
+  hasSafeReferrerPolicy,
+  hasStrongHsts,
+  isNoSniffHeader,
+  isSupportedXFrameOptions,
+} from "@/app/lib/header-rules";
 import type { HeaderCheck, AnalysisResult } from "@/app/lib/types";
 
 export const runtime = "nodejs";
@@ -82,82 +88,90 @@ export async function POST(req: NextRequest) {
     }
     const checks: HeaderCheck[] = [];
 
-    // CHECK 1: HSTS
+    // CHECK 1: HSTS — require a meaningful max-age, not mere presence.
     const hsts = headers.get("strict-transport-security");
+    const hstsValid = hasStrongHsts(hsts);
     checks.push({
       name: "Strict-Transport-Security (HSTS)",
       present: !!hsts,
       value: hsts,
-      severity: hsts ? "good" : "danger",
-      description: "Memaksa browser menggunakan HTTPS untuk semua koneksi",
-      recommendation: hsts
-        ? "✅ Implementasi HSTS yang baik"
-        : "Tambahkan header: Strict-Transport-Security: max-age=31536000; includeSubDomains",
+      severity: hstsValid ? "good" : hsts ? "warning" : "danger",
+      description: "Memeriksa keberadaan HSTS dan max-age minimal satu tahun.",
+      recommendation: hstsValid
+        ? "✅ max-age HSTS minimal satu tahun terdeteksi; tinjau cakupan subdomain secara terpisah."
+        : hsts
+          ? "Header ada, tetapi max-age harus valid dan minimal 31536000 detik."
+          : "Tambahkan header: Strict-Transport-Security: max-age=31536000; includeSubDomains",
     });
 
-    // CHECK 2: CSP
+    // CHECK 2: CSP — presence alone does not prove the directives are safe.
     const csp = headers.get("content-security-policy");
+    const cspPresent = !!csp?.trim();
     checks.push({
       name: "Content-Security-Policy (CSP)",
-      present: !!csp,
+      present: cspPresent,
       value: csp,
-      severity: csp ? "good" : "danger",
-      description: "Mencegah serangan XSS dan injection",
-      recommendation: csp
-        ? "✅ CSP sudah dikonfigurasi"
-        : "Implementasi CSP untuk membatasi resource yang bisa di-load",
+      severity: cspPresent ? "warning" : "danger",
+      description: "Keberadaan CSP diperiksa; kualitas directive belum dianalisis.",
+      recommendation: cspPresent
+        ? "Header ada, tetapi audit directive secara terpisah; keberadaan CSP saja tidak membuktikan kebijakan aman."
+        : "Tambahkan Content-Security-Policy dengan directive spesifik dan hindari wildcard/unsafe-inline jika tidak diperlukan.",
     });
 
-    // CHECK 3: X-Frame-Options
+    // CHECK 3: X-Frame-Options — accept only recognized defensive values.
     const xfo = headers.get("x-frame-options");
+    const xfoValid = isSupportedXFrameOptions(xfo);
     checks.push({
       name: "X-Frame-Options",
       present: !!xfo,
       value: xfo,
-      severity: xfo ? "good" : "warning",
-      description: "Mencegah serangan clickjacking",
-      recommendation: xfo
-        ? "✅ Terlindungi dari clickjacking"
-        : "Tambahkan: X-Frame-Options: DENY atau SAMEORIGIN",
+      severity: xfoValid ? "good" : "warning",
+      description: "Memeriksa nilai DENY atau SAMEORIGIN; CSP frame-ancestors juga relevan.",
+      recommendation: xfoValid
+        ? "✅ Nilai X-Frame-Options dikenali."
+        : "Gunakan DENY atau SAMEORIGIN, atau audit CSP frame-ancestors sebagai kontrol modern.",
     });
 
-    // CHECK 4: X-Content-Type-Options
+    // CHECK 4: X-Content-Type-Options — compare the nosniff token safely.
     const xcto = headers.get("x-content-type-options");
+    const xctoValid = isNoSniffHeader(xcto);
     checks.push({
       name: "X-Content-Type-Options",
-      present: xcto === "nosniff",
+      present: !!xcto,
       value: xcto,
-      severity: xcto === "nosniff" ? "good" : "warning",
-      description: "Mencegah browser melakukan MIME-type sniffing",
-      recommendation: xcto === "nosniff"
-        ? "✅ MIME sniffing protection aktif"
-        : "Tambahkan: X-Content-Type-Options: nosniff",
+      severity: xctoValid ? "good" : "warning",
+      description: "Mencegah browser melakukan MIME-type sniffing.",
+      recommendation: xctoValid
+        ? "✅ MIME sniffing protection aktif."
+        : "Tambahkan nilai header X-Content-Type-Options: nosniff.",
     });
 
-    // CHECK 5: Referrer-Policy
+    // CHECK 5: Referrer-Policy — do not mark unsafe-url as a positive result.
     const rp = headers.get("referrer-policy");
+    const rpValid = hasSafeReferrerPolicy(rp);
     checks.push({
       name: "Referrer-Policy",
       present: !!rp,
       value: rp,
-      severity: rp ? "good" : "warning",
-      description: "Mengontrol informasi referrer yang dikirim ke website lain",
-      recommendation: rp
-        ? "✅ Referrer policy sudah dikonfigurasi"
-        : "Tambahkan: Referrer-Policy: strict-origin-when-cross-origin",
+      severity: rpValid ? "good" : "warning",
+      description: "Memeriksa kebijakan referrer yang dikenal dan tidak memakai unsafe-url.",
+      recommendation: rpValid
+        ? "✅ Nilai Referrer-Policy dikenali."
+        : "Pertimbangkan strict-origin-when-cross-origin, same-origin, atau no-referrer.",
     });
 
-    // CHECK 6: Permissions-Policy
+    // CHECK 6: Presence is not enough to validate the Permissions-Policy allowlist.
     const pp = headers.get("permissions-policy");
+    const ppPresent = !!pp?.trim();
     checks.push({
       name: "Permissions-Policy",
-      present: !!pp,
+      present: ppPresent,
       value: pp,
-      severity: pp ? "good" : "warning",
-      description: "Mengontrol fitur browser yang bisa dipakai (kamera, mic, dll)",
-      recommendation: pp
-        ? "✅ Permissions sudah dibatasi"
-        : "Batasi akses ke fitur browser sensitif",
+      severity: "warning",
+      description: "Keberadaan header diperiksa; allowlist tiap fitur belum divalidasi.",
+      recommendation: ppPresent
+        ? "Header ada; audit allowlist kamera, mikrofon, geolokasi, dan fitur sensitif."
+        : "Tambahkan Permissions-Policy yang membatasi fitur sensitif sesuai kebutuhan aplikasi.",
     });
 
     // CHECK 7: HTTPS
@@ -167,9 +181,9 @@ export async function POST(req: NextRequest) {
       present: isHttps,
       value: targetUrl.protocol,
       severity: isHttps ? "good" : "danger",
-      description: "Koneksi terenkripsi antara browser dan server",
+      description: "Koneksi terenkripsi antara browser dan server.",
       recommendation: isHttps
-        ? "✅ Menggunakan HTTPS"
+        ? "✅ Menggunakan HTTPS."
         : "WAJIB migrate ke HTTPS!",
     });
 
@@ -186,16 +200,7 @@ export async function POST(req: NextRequest) {
     else if (serverHeader.toLowerCase().includes("cloudflare")) botProtection = "Cloudflare";
     else if (serverHeader.toLowerCase().includes("akamai")) botProtection = "Akamai";
 
-    if (botProtection) {
-      checks.push({
-        name: "Anti-Bot Protection Detected",
-        present: true,
-        value: botProtection,
-        severity: "warning",
-        description: `Website ini dilindungi oleh ${botProtection}. Beberapa security headers mungkin disembunyikan.`,
-        recommendation: `Hasil analisis mungkin tidak 100% akurat karena ${botProtection} sering menyembunyikan headers dari bot. Ini BUKAN berarti website tidak aman!`,
-      });
-    }
+    // CDN/anti-bot detection is context only; it must not lower the header score.
 
     // Hitung skor & grade
     const goodCount = checks.filter((c) => c.severity === "good").length;
