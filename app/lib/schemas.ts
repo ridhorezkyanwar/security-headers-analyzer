@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const MAX_REQUEST_BYTES = 4 * 1024;
+
 export const UrlInputSchema = z.object({
   url: z
     .string()
