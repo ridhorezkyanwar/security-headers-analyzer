@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Security Headers Analyzer | Ridho Rezky Anwar",
-  description: "Analyze HTTP security headers of any website in real-time. Built by Ridho Rezky Anwar, AWS Certified ML Engineer.",
+  description: "Analyze HTTP security headers of any website in real time. Built by Ridho Rezky Anwar, a cybersecurity and AI/ML learner.",
   keywords: ["security", "headers", "analyzer", "cybersecurity", "HTTP", "HSTS", "CSP"],
   authors: [{ name: "Ridho Rezky Anwar" }],
 };
