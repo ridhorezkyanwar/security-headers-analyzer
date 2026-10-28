@@ -23,7 +23,7 @@ export default function Footer() {
         </div>
         
         <p className="text-sm text-gray-500 mb-4">
-          AWS Certified Machine Learning Engineer | Cybersecurity Enthusiast
+          Cybersecurity & AI/ML Learner
         </p>
         
         <div className="flex items-center justify-center gap-6 text-sm">
