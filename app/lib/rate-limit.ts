@@ -13,15 +13,18 @@ type Bucket = { windowStart: number; count: number };
  */
 export class FixedWindowRateLimiter {
   private readonly buckets = new Map<string, Bucket>();
+  private readonly limit: number;
+  private readonly windowMs: number;
+  private readonly maxKeys: number;
 
-  constructor(
-    private readonly limit: number,
-    private readonly windowMs: number,
-    private readonly maxKeys = 10_000,
-  ) {
+  constructor(limit: number, windowMs: number, maxKeys = 10_000) {
     if (!Number.isInteger(limit) || limit < 1) throw new Error("limit must be a positive integer");
     if (!Number.isInteger(windowMs) || windowMs < 1) throw new Error("windowMs must be a positive integer");
     if (!Number.isInteger(maxKeys) || maxKeys < 1) throw new Error("maxKeys must be a positive integer");
+
+    this.limit = limit;
+    this.windowMs = windowMs;
+    this.maxKeys = maxKeys;
   }
 
   consume(key: string, now = Date.now()): RateLimitDecision {
